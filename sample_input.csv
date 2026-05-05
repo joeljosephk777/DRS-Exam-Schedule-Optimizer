@@ -1,0 +1,21 @@
+name,start_time,end_time,private_room,course,instructor
+Alice Johnson,8:45 AM,11:45 AM,Yes,MATH 101,Dr. Smith
+Bob Lee,9:00 AM,12:00 PM,No,ENGL 201,Prof. Jones
+Carol White,9:00 AM,1:00 PM,Yes,CHEM 301,Dr. Patel
+David Kim,9:30 AM,12:30 PM,No,HIST 150,Prof. Brown
+Eva Martinez,10:00 AM,1:00 PM,No,BIOL 210,Dr. Chen
+Frank Nguyen,10:00 AM,2:00 PM,Yes,PHYS 301,Dr. Okafor
+Grace Park,10:30 AM,1:30 PM,No,PSYC 101,Prof. Williams
+Henry Scott,11:00 AM,2:00 PM,No,ECON 201,Dr. Rivera
+Irene Thomas,11:00 AM,3:00 PM,Yes,CS 101,Prof. Garcia
+Jane Wilson,11:30 AM,2:30 PM,No,ART 110,Dr. Thompson
+Kevin Adams,12:00 PM,3:00 PM,No,MATH 201,Dr. Smith
+Laura Baker,12:00 PM,4:00 PM,No,SOC 101,Prof. Diaz
+Mike Carter,12:30 PM,3:30 PM,Yes,CHEM 201,Dr. Patel
+Nancy Davis,1:00 PM,4:00 PM,No,ENGL 102,Prof. Jones
+Oscar Evans,1:00 PM,4:00 PM,No,HIST 250,Prof. Brown
+Paula Foster,1:30 PM,4:30 PM,No,BIOL 110,Dr. Chen
+Quinn Green,2:00 PM,5:00 PM,No,PHYS 101,Dr. Okafor
+Rachel Harris,2:00 PM,5:15 PM,Yes,CS 201,Prof. Garcia
+Sam Irving,2:30 PM,5:15 PM,No,PSYC 201,Prof. Williams
+Tina Jackson,3:00 PM,5:15 PM,No,ECON 101,Dr. Rivera
