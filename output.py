@@ -1,8 +1,9 @@
 import csv
 from models import Student
+from algorithm import PRIVATE_IDS, OUTLET_IDS, NO_OUTLET_IDS
 
-_PRIVATE_SEAT_COUNT = 3
-_SHARED_SEAT_COUNT = 22
+_PRIVATE_SEAT_COUNT = len(PRIVATE_IDS)
+_SHARED_SEAT_COUNT = len(OUTLET_IDS) + len(NO_OUTLET_IDS)
 
 
 def _fmt(minutes: int) -> str:
@@ -28,18 +29,24 @@ def _conflict_info(student: Student, scheduled: list[Student]) -> tuple[str, lis
     return f"All {pool_size} {pool_name} seats occupied", conflicts
 
 
+def _seat_sort_key(seat_id):
+    """Sort ints before strings; within each group, natural order."""
+    return (isinstance(seat_id, str), seat_id)
+
+
 def print_schedule(scheduled: list[Student], unscheduled: list[Student]) -> None:
-    sorted_sched = sorted(scheduled, key=lambda s: (s.start, s.assigned_seat))
+    sorted_sched = sorted(scheduled, key=lambda s: (s.start, _seat_sort_key(s.assigned_seat)))
 
     print("\n=== SCHEDULED STUDENTS ===")
     if not sorted_sched:
         print("  (none)")
     else:
-        print(f"{'SEAT':<6}{'NAME':<30}{'START':<12}{'END':<12}{'TYPE'}")
-        print("-" * 70)
+        print(f"{'SEAT':<6}{'NAME':<30}{'START':<12}{'END':<12}{'LAPTOP':<8}{'TYPE'}")
+        print("-" * 78)
         for s in sorted_sched:
             room_type = "Private" if s.needs_private else "Shared"
-            print(f"{s.assigned_seat:<6}{s.name:<30}{_fmt(s.start):<12}{_fmt(s.end):<12}{room_type}")
+            laptop_str = "Yes" if s.uses_laptop else "No"
+            print(f"{str(s.assigned_seat):<6}{s.name:<30}{_fmt(s.start):<12}{_fmt(s.end):<12}{laptop_str:<8}{room_type}")
 
     print(f"\n=== UNSCHEDULED STUDENTS ({len(unscheduled)}) ===")
     if not unscheduled:
@@ -127,20 +134,21 @@ def write_csv(
             if k not in extra_keys:
                 extra_keys.append(k)
 
-    base_fields = ["seat", "name", "start_time", "end_time", "private_room", "status", "reason"]
+    base_fields = ["seat", "name", "start_time", "end_time", "private_room", "laptop", "status", "reason"]
     fieldnames = base_fields + extra_keys
 
     with open(path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
 
-        for s in sorted(scheduled, key=lambda s: (s.start, s.assigned_seat)):
+        for s in sorted(scheduled, key=lambda s: (s.start, _seat_sort_key(s.assigned_seat))):
             row = {
                 "seat": s.assigned_seat,
                 "name": s.name,
                 "start_time": _fmt(s.start),
                 "end_time": _fmt(s.end),
                 "private_room": "Yes" if s.needs_private else "No",
+                "laptop": "Yes" if s.uses_laptop else "No",
                 "status": "Scheduled",
                 "reason": "",
             }
@@ -159,6 +167,7 @@ def write_csv(
                 "start_time": _fmt(s.start),
                 "end_time": _fmt(s.end),
                 "private_room": "Yes" if s.needs_private else "No",
+                "laptop": "Yes" if s.uses_laptop else "No",
                 "status": "Unscheduled",
                 "reason": base_reason + conflict_str,
             }

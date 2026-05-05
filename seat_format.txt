@@ -1,0 +1,3 @@
+Seats number with  wall outlet (for laptop) - 5-8,12-16,31,9,10,11,32,33,34
+Seat without wall outlet - 17-30
+Private room (wall outlet) - b,c,d,e
