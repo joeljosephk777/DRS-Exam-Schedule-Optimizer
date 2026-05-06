@@ -15,8 +15,9 @@ venv/
 env/
 .env/
 
-# Output files (generated, not source)
-results.csv
+# CSV files — contain real student data; only the format sample is committed
+*.csv
+!sample_drs_export.csv
 
 # macOS
 .DS_Store
