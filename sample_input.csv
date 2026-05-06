@@ -4,10 +4,10 @@ Bob Lee,9:00 AM,12:00 PM,No,Yes,ENGL 201,Prof. Jones
 Carol White,9:00 AM,1:00 PM,Yes,No,CHEM 301,Dr. Patel
 David Kim,9:30 AM,12:30 PM,No,No,HIST 150,Prof. Brown
 Eva Martinez,10:00 AM,1:00 PM,No,Yes,BIOL 210,Dr. Chen
-Frank Nguyen,10:00 AM,2:00 PM,Yes,No,PHYS 301,Dr. Okafor
+Frank Nguyen,10:00 AM,6:00 PM,Yes,No,PHYS 301,Dr. Okafor
 Grace Park,10:30 AM,1:30 PM,No,Yes,PSYC 101,Prof. Williams
-Henry Scott,11:00 AM,2:00 PM,No,No,ECON 201,Dr. Rivera
-Irene Thomas,11:00 AM,3:00 PM,Yes,Yes,CS 101,Prof. Garcia
+Henry Scott,11:00 AM,7:00 PM,No,No,ECON 201,Dr. Rivera
+Irene Thomas,11:00 AM,8:00 PM,Yes,Yes,CS 101,Prof. Garcia
 Jane Wilson,11:30 AM,2:30 PM,No,No,ART 110,Dr. Thompson
 Kevin Adams,12:00 PM,3:00 PM,No,Yes,MATH 201,Dr. Smith
 Laura Baker,12:00 PM,4:00 PM,No,No,SOC 101,Prof. Diaz
