@@ -22,9 +22,13 @@ Each student has a fixed exam window somewhere between 8:45 AM and 5:15 PM. No t
 ```bash
 python3 scheduler.py <input.csv>
 python3 scheduler.py <input.csv> --output results.csv
+python3 scheduler.py <input.csv> --chart schedule.html
+python3 scheduler.py <input.csv> --output results.csv --chart schedule.html
 ```
 
 `--output` / `-o` writes the full schedule to a CSV file in addition to printing to the terminal.
+
+`--chart` / `-c` generates a self-contained HTML Gantt chart — open it in any browser to see all seats as rows with colored bars showing when each seat is occupied. Hover a bar for student details. Empty seats are shown as faded rows so available capacity is visible at a glance.
 
 ---
 
