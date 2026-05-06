@@ -1,0 +1,21 @@
+seat,name,start_time,end_time,private_room,laptop,status,reason,course,instructor
+b,Alice Johnson,8:45 AM,11:45 AM,Yes,Yes,Scheduled,,MATH 101,Dr. Smith
+5,Bob Lee,9:00 AM,12:00 PM,No,Yes,Scheduled,,ENGL 201,Prof. Jones
+c,Carol White,9:00 AM,1:00 PM,Yes,No,Scheduled,,CHEM 301,Dr. Patel
+6,David Kim,9:30 AM,12:30 PM,No,No,Scheduled,,HIST 150,Prof. Brown
+7,Eva Martinez,10:00 AM,1:00 PM,No,Yes,Scheduled,,BIOL 210,Dr. Chen
+d,Frank Nguyen,10:00 AM,2:00 PM,Yes,No,Scheduled,,PHYS 301,Dr. Okafor
+8,Grace Park,10:30 AM,1:30 PM,No,Yes,Scheduled,,PSYC 101,Prof. Williams
+9,Henry Scott,11:00 AM,2:00 PM,No,No,Scheduled,,ECON 201,Dr. Rivera
+e,Irene Thomas,11:00 AM,3:00 PM,Yes,Yes,Scheduled,,CS 101,Prof. Garcia
+10,Jane Wilson,11:30 AM,2:30 PM,No,No,Scheduled,,ART 110,Dr. Thompson
+5,Kevin Adams,12:00 PM,3:00 PM,No,Yes,Scheduled,,MATH 201,Dr. Smith
+11,Laura Baker,12:00 PM,4:00 PM,No,No,Scheduled,,SOC 101,Prof. Diaz
+b,Mike Carter,12:30 PM,3:30 PM,Yes,No,Scheduled,,CHEM 201,Dr. Patel
+6,Nancy Davis,1:00 PM,4:00 PM,No,Yes,Scheduled,,ENGL 102,Prof. Jones
+7,Oscar Evans,1:00 PM,4:00 PM,No,No,Scheduled,,HIST 250,Prof. Brown
+8,Paula Foster,1:30 PM,4:30 PM,No,Yes,Scheduled,,BIOL 110,Dr. Chen
+9,Quinn Green,2:00 PM,5:00 PM,No,No,Scheduled,,PHYS 101,Dr. Okafor
+c,Rachel Harris,2:00 PM,5:15 PM,Yes,Yes,Scheduled,,CS 201,Prof. Garcia
+10,Sam Irving,2:30 PM,5:15 PM,No,Yes,Scheduled,,PSYC 201,Prof. Williams
+5,Tina Jackson,3:00 PM,5:15 PM,No,No,Scheduled,,ECON 101,Dr. Rivera
