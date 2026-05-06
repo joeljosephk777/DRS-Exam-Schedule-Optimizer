@@ -89,7 +89,14 @@ def _parse_drs_rows(reader: csv.DictReader, norm: dict[str, str]) -> list[Studen
 
 
 def parse_csv(path: str) -> list[Student]:
-    with open(path, newline="", encoding="utf-8-sig") as f:
+    try:
+        return _parse_csv_with_encoding(path, "utf-8-sig")
+    except UnicodeDecodeError:
+        return _parse_csv_with_encoding(path, "latin-1")
+
+
+def _parse_csv_with_encoding(path: str, encoding: str) -> list[Student]:
+    with open(path, newline="", encoding=encoding) as f:
         reader = csv.DictReader(f)
         if reader.fieldnames is None:
             raise ValueError("CSV file appears to be empty.")
