@@ -130,6 +130,6 @@ csv_parser.py     — auto-detecting CSV parser (DRS export + generic)
 models.py         — Student and Seat dataclasses
 output.py         — terminal printing and CSV writing
 seat_format.txt        — source of truth for seat numbers and outlet status
-sample_drs_export.csv  — anonymized example of the DRS export input format
+sample_import.csv      — anonymized example of the DRS input format
 test_scheduler.py — lightweight functional tests; runnable as a script
 ```

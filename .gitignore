@@ -17,7 +17,7 @@ env/
 
 # CSV files — contain real student data; only the format sample is committed
 *.csv
-!sample_drs_export.csv
+!sample_import.csv
 
 # macOS
 .DS_Store
