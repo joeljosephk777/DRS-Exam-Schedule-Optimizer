@@ -4,7 +4,7 @@ import sys
 
 from csv_parser import parse_csv
 from algorithm import schedule
-from output import print_schedule, write_csv
+from output import print_schedule, write_csv, write_chart
 
 
 def main():
@@ -16,6 +16,11 @@ def main():
         "--output", "-o",
         metavar="FILE",
         help="Write results to a CSV file (in addition to printing to screen)",
+    )
+    parser.add_argument(
+        "--chart", "-c",
+        metavar="FILE",
+        help="Write a self-contained HTML Gantt chart to FILE (open in any browser)",
     )
     args = parser.parse_args()
 
@@ -38,6 +43,10 @@ def main():
     if args.output:
         write_csv(scheduled, unscheduled, args.output)
         print(f"Results written to: {args.output}")
+
+    if args.chart:
+        write_chart(scheduled, unscheduled, args.chart)
+        print(f"Chart written to: {args.chart}")
 
 
 if __name__ == "__main__":
