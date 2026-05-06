@@ -79,7 +79,7 @@ def _greedy_pass(
     scheduled: list[Student] = []
     unscheduled: list[Student] = []
 
-    for student in sorted(students, key=lambda s: (s.end, -s.start)):
+    for student in sorted(students, key=lambda s: (s.end, s.start)):
         while busy_heap and busy_heap[0][0] <= student.start:
             _, seat_id = heapq.heappop(busy_heap)
             heapq.heappush(free_heap, seat_id)
@@ -106,9 +106,9 @@ def _shared_greedy_pass(
     EDF greedy for shared (non-private) students with laptop-outlet preference.
 
     Maintains two free heaps — outlet and non-outlet — plus one unified busy heap.
-    Laptop students prefer outlet seats; non-laptop students take the lowest available
-    seat ID across both pools. This runs in a single pass so there are no
-    cross-pass booking conflicts.
+    Laptop students prefer outlet seats; non-laptop students prefer non-outlet seats
+    (falling back to outlet only when non-outlet is full). This runs in a single pass
+    so there are no cross-pass booking conflicts.
     """
     outlet_heap: list[int] = list(outlet_ids)
     heapq.heapify(outlet_heap)
@@ -119,7 +119,7 @@ def _shared_greedy_pass(
     scheduled: list[Student] = []
     unscheduled: list[Student] = []
 
-    for student in sorted(students, key=lambda s: (s.end, -s.start)):
+    for student in sorted(students, key=lambda s: (s.end, s.start)):
         # Release seats whose last booking ended at or before student's start
         while busy_heap and busy_heap[0][0] <= student.start:
             _, seat_id, is_outlet = heapq.heappop(busy_heap)
@@ -140,20 +140,13 @@ def _shared_greedy_pass(
                 seat_id = heapq.heappop(no_outlet_heap)
                 is_outlet = False
         else:
-            # No preference: pick the lowest seat ID available across both pools
-            if outlet_heap and no_outlet_heap:
-                if outlet_heap[0] <= no_outlet_heap[0]:
-                    seat_id = heapq.heappop(outlet_heap)
-                    is_outlet = True
-                else:
-                    seat_id = heapq.heappop(no_outlet_heap)
-                    is_outlet = False
+            # Prefer non-outlet seats to leave outlets free for laptop students
+            if no_outlet_heap:
+                seat_id = heapq.heappop(no_outlet_heap)
+                is_outlet = False
             elif outlet_heap:
                 seat_id = heapq.heappop(outlet_heap)
                 is_outlet = True
-            elif no_outlet_heap:
-                seat_id = heapq.heappop(no_outlet_heap)
-                is_outlet = False
 
         if seat_id is not None:
             seats[seat_id].book(student.start, student.end)
