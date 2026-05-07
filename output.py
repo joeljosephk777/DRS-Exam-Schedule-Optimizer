@@ -44,12 +44,17 @@ def print_schedule(scheduled: list[Student], unscheduled: list[Student]) -> None
     if not sorted_sched:
         print("  (none)")
     else:
-        print(f"{'SEAT':<6}{'NAME':<30}{'START':<12}{'END':<12}{'LAPTOP':<8}{'TYPE'}")
-        print("-" * 78)
+        print(f"{'SEAT':<6}{'NAME':<30}{'START':<12}{'END':<12}{'LAPTOP':<8}{'TYPE':<9}CLASS")
+        print("-" * 90)
         for s in sorted_sched:
             room_type = "Private" if s.needs_private else "Shared"
             laptop_str = "Yes" if s.uses_laptop else "No"
-            print(f"{str(s.assigned_seat):<6}{s.name:<30}{_fmt(s.start):<12}{_fmt(s.end):<12}{laptop_str:<8}{room_type}")
+            class_str = " ".join(filter(None, [
+                _extra(s, "Subject", "subject"),
+                _extra(s, "Course",  "course"),
+                _extra(s, "Section", "section"),
+            ]))
+            print(f"{str(s.assigned_seat):<6}{s.name:<30}{_fmt(s.start):<12}{_fmt(s.end):<12}{laptop_str:<8}{room_type:<9}{class_str}")
 
     print(f"\n=== UNSCHEDULED STUDENTS ({len(unscheduled)}) ===")
     if not unscheduled:
