@@ -52,7 +52,7 @@ def _parse_drs_rows(reader: csv.DictReader, norm: dict[str, str]) -> list[Studen
 
     def get(row: dict, key: str) -> str:
         orig = norm.get(key)
-        return row[orig].strip() if orig else ""
+        return (row[orig] or "").strip() if orig else ""
 
     for i, row in enumerate(reader, start=2):
         preferred = get(row, "preferred_name")
@@ -61,8 +61,14 @@ def _parse_drs_rows(reader: csv.DictReader, norm: dict[str, str]) -> list[Studen
         if not name:
             continue  # blank trailing row
 
-        start = _parse_time(get(row, "start_time"))
-        end = _parse_time(get(row, "end_time"))
+        try:
+            start = _parse_time(get(row, "start_time"))
+        except ValueError:
+            raise ValueError(f"Row {i}: cannot parse start_time for '{name}'.")
+        try:
+            end = _parse_time(get(row, "end_time"))
+        except ValueError:
+            raise ValueError(f"Row {i}: cannot parse end_time for '{name}'.")
 
         if end <= start:
             raise ValueError(f"Row {i}: end_time must be after start_time for '{name}'.")
@@ -111,7 +117,7 @@ def _parse_csv_with_encoding(path: str, encoding: str) -> list[Student]:
             orig = norm.get(key)
             if orig is None:
                 raise ValueError(f"Required column '{key}' not found in CSV headers: {list(reader.fieldnames)}")
-            return row[orig].strip()
+            return (row[orig] or "").strip()
 
         students = []
         for i, row in enumerate(reader, start=2):

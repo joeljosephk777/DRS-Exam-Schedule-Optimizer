@@ -48,7 +48,13 @@ def _parse_seat_format(path: str) -> tuple[list[int], list[int], list[str]]:
 
 
 _SEAT_FORMAT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "seat_format.txt")
-OUTLET_IDS, NO_OUTLET_IDS, PRIVATE_IDS = _parse_seat_format(_SEAT_FORMAT_PATH)
+try:
+    OUTLET_IDS, NO_OUTLET_IDS, PRIVATE_IDS = _parse_seat_format(_SEAT_FORMAT_PATH)
+except FileNotFoundError:
+    raise FileNotFoundError(
+        f"seat_format.txt not found at '{_SEAT_FORMAT_PATH}'. "
+        "This file is required to define the seat layout."
+    )
 _ALL_SHARED_IDS: list[int] = sorted(OUTLET_IDS + NO_OUTLET_IDS)
 
 
@@ -69,8 +75,8 @@ def _greedy_pass(
     seats: dict[SeatID, Seat],
 ) -> tuple[list[Student], list[Student]]:
     """
-    EDF greedy with min-heap seat selection. Tie-breaks equal end times by latest
-    start (shortest-duration exam first), which leaves more room for longer exams.
+    Greedy interval scheduling sorted by start time, ties broken by end time
+    (shortest exam first). Uses a min-heap to reclaim seats as they free up.
     """
     free_heap: list = list(pool_ids)
     heapq.heapify(free_heap)
@@ -103,12 +109,11 @@ def _shared_greedy_pass(
     seats: dict[SeatID, Seat],
 ) -> tuple[list[Student], list[Student]]:
     """
-    EDF greedy for shared (non-private) students with laptop-outlet preference.
+    Greedy pass for shared students, sorted by start time, with laptop-outlet preference.
 
     Maintains two free heaps — outlet and non-outlet — plus one unified busy heap.
     Laptop students prefer outlet seats; non-laptop students prefer non-outlet seats
-    (falling back to outlet only when non-outlet is full). This runs in a single pass
-    so there are no cross-pass booking conflicts.
+    (falling back to outlet only when non-outlet is full). Single pass, no conflicts.
     """
     outlet_heap: list[int] = list(outlet_ids)
     heapq.heapify(outlet_heap)
@@ -221,11 +226,9 @@ def _swap_pass(
 
 def schedule(students: list[Student]) -> tuple[list[Student], list[Student]]:
     """
-    Greedy interval scheduling (EDF, earliest end time / latest start tie-break)
-    with a post-greedy single-swap rescue pass.
-
-    Laptop students get first pick of outlet seats within the shared pool (single
-    EDF pass, no conflicts). Private and shared pools are independent.
+    Greedy interval scheduling (start-time order) with a post-greedy single-swap
+    rescue pass. Laptop students get first pick of outlet seats within the shared
+    pool. Private and shared pools are scheduled independently.
     Returns (scheduled, unscheduled).
     """
     seats = _build_seats()

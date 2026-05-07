@@ -26,8 +26,8 @@ def main():
 
     try:
         students = parse_csv(args.input)
-    except FileNotFoundError:
-        print(f"Error: file not found: {args.input}", file=sys.stderr)
+    except OSError as e:
+        print(f"Error reading input file: {e}", file=sys.stderr)
         sys.exit(1)
     except ValueError as e:
         print(f"Error parsing CSV: {e}", file=sys.stderr)
@@ -41,12 +41,20 @@ def main():
     print_schedule(scheduled, unscheduled)
 
     if args.output:
-        write_csv(scheduled, unscheduled, args.output)
-        print(f"Results written to: {args.output}")
+        try:
+            write_csv(scheduled, unscheduled, args.output)
+            print(f"Results written to: {args.output}")
+        except OSError as e:
+            print(f"Error writing CSV: {e}", file=sys.stderr)
+            sys.exit(1)
 
     if args.chart:
-        write_chart(scheduled, unscheduled, args.chart)
-        print(f"Chart written to: {args.chart}")
+        try:
+            write_chart(scheduled, unscheduled, args.chart)
+            print(f"Chart written to: {args.chart}")
+        except OSError as e:
+            print(f"Error writing chart: {e}", file=sys.stderr)
+            sys.exit(1)
 
 
 if __name__ == "__main__":

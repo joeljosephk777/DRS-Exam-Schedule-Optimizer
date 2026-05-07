@@ -1,4 +1,4 @@
-# TODO
+``# TODO
 
 ## Done this session
 - Fixed double-booking bug in `_greedy_pass` and `_shared_greedy_pass`: sort key changed from `(s.end, s.start)` (EDF) to `(s.start, s.end)` (start-time ordering). EDF is correct for single-machine scheduling but causes double-bookings in the k-machine case — a later-processed student with an earlier start can grab a seat released for a different student.
