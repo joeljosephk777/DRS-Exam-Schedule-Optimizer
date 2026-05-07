@@ -79,7 +79,7 @@ def _greedy_pass(
     scheduled: list[Student] = []
     unscheduled: list[Student] = []
 
-    for student in sorted(students, key=lambda s: (s.end, s.start)):
+    for student in sorted(students, key=lambda s: (s.start, s.end)):
         while busy_heap and busy_heap[0][0] <= student.start:
             _, seat_id = heapq.heappop(busy_heap)
             heapq.heappush(free_heap, seat_id)
@@ -119,7 +119,7 @@ def _shared_greedy_pass(
     scheduled: list[Student] = []
     unscheduled: list[Student] = []
 
-    for student in sorted(students, key=lambda s: (s.end, s.start)):
+    for student in sorted(students, key=lambda s: (s.start, s.end)):
         # Release seats whose last booking ended at or before student's start
         while busy_heap and busy_heap[0][0] <= student.start:
             _, seat_id, is_outlet = heapq.heappop(busy_heap)

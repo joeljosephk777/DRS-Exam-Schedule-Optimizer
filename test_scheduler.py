@@ -30,7 +30,7 @@ def test_no_laptop_column_defaults_false():
 
 
 def test_laptop_students_get_outlet_seats():
-    students = parse_csv("sample_input.csv")
+    students = parse_csv("sample_import.csv")
     sched, _ = schedule(students)
     for s in sched:
         if s.uses_laptop and not s.needs_private:
@@ -40,7 +40,7 @@ def test_laptop_students_get_outlet_seats():
 
 
 def test_private_students_get_letter_seats():
-    students = parse_csv("sample_input.csv")
+    students = parse_csv("sample_import.csv")
     sched, _ = schedule(students)
     for s in sched:
         if s.needs_private:
@@ -50,7 +50,7 @@ def test_private_students_get_letter_seats():
 
 
 def test_no_double_bookings():
-    students = parse_csv("sample_input.csv")
+    students = parse_csv("sample_import.csv")
     sched, _ = schedule(students)
     seat_bookings: dict = {}
     for s in sched:
@@ -91,12 +91,27 @@ def test_laptop_overflows_to_non_outlet_when_outlets_full():
     assert non_outlet_count == 1
 
 
+def test_no_double_bookings_stress():
+    students = parse_csv("sample_stress_import.csv")
+    sched, _ = schedule(students)
+    seat_bookings: dict = {}
+    for s in sched:
+        seat_bookings.setdefault(s.assigned_seat, []).append((s.start, s.end))
+    for sid, bks in seat_bookings.items():
+        for i, (s1, e1) in enumerate(bks):
+            for s2, e2 in bks[i + 1:]:
+                assert e1 <= s2 or s1 >= e2, (
+                    f"Seat {sid}: ({s1},{e1}) overlaps ({s2},{e2})"
+                )
+
+
 if __name__ == "__main__":
     tests = [
         test_no_laptop_column_defaults_false,
         test_laptop_students_get_outlet_seats,
         test_private_students_get_letter_seats,
         test_no_double_bookings,
+        test_no_double_bookings_stress,
         test_non_laptop_falls_back_to_non_outlet_when_outlets_full,
         test_laptop_overflows_to_non_outlet_when_outlets_full,
     ]

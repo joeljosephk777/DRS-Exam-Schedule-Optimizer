@@ -115,9 +115,11 @@ Defined in `seat_format.txt` (source of truth — edit there to change seat layo
 
 The scheduler runs independently for each pool (private and shared), then combines results.
 
-**Step 1 — Greedy EDF with outlet-aware seat selection**
+**Step 1 — Greedy pass with outlet-aware seat selection**
 
-Students are sorted by earliest end time (EDF), ties broken by latest start (shortest exam first). Within the shared pool, two heaps track outlet and non-outlet seats separately. Laptop students pop from the outlet heap first; non-laptop students take the lowest available seat ID across both heaps. All done in a single pass to avoid cross-pass booking conflicts.
+Students are sorted by start time, ties broken by end time (shortest exam first). Within the shared pool, two heaps track outlet and non-outlet seats separately. Laptop students pop from the outlet heap first; non-laptop students prefer non-outlet seats and fall back to outlet only when non-outlet is full. All done in a single pass to avoid cross-pass booking conflicts.
+
+Start-time ordering (not EDF) is used because EDF is correct for single-machine interval scheduling but causes double-bookings in the k-machine case: a later-processed student with an earlier actual start can grab a seat that was released for another student, creating an overlap. Start-time ordering guarantees that when a seat is released, all future students start at or after that point.
 
 **Step 2 — Single-swap rescue pass**
 
