@@ -11,6 +11,9 @@ class Student:
     end: int     # minutes since midnight
     needs_private: bool
     uses_laptop: bool = False
+    needs_furniture: bool = False
+    needs_low_vision: bool = False
+    needs_service_animal: bool = False
     extra: dict = field(default_factory=dict)
     assigned_seat: Optional[SeatID] = None
 

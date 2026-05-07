@@ -2,10 +2,11 @@ import os
 import tempfile
 
 from csv_parser import parse_csv
-from algorithm import schedule, OUTLET_IDS, NO_OUTLET_IDS, PRIVATE_IDS
+from algorithm import schedule, OUTLET_IDS, NO_OUTLET_IDS, PRIVATE_IDS, FURNITURE_IDS
 
 OUTLET_SET = set(OUTLET_IDS)
 PRIVATE_SET = set(PRIVATE_IDS)
+FURNITURE_SET = set(FURNITURE_IDS)
 
 
 def _tmp_csv(content: str) -> list:
@@ -105,6 +106,54 @@ def test_no_double_bookings_stress():
                 )
 
 
+def test_furniture_students_get_seats_17_18():
+    rows = "name,start_time,end_time,private_room,furniture\n"
+    rows += "FurnA,9:00 AM,11:00 AM,No,Yes\n"
+    rows += "FurnB,9:00 AM,11:00 AM,No,Yes\n"
+    for i in range(10):
+        rows += f"Regular{i},9:00 AM,11:00 AM,No,No\n"
+    students = _tmp_csv(rows)
+    sched, unsched = schedule(students)
+    assert len(unsched) == 0
+    for s in sched:
+        if s.needs_furniture:
+            assert s.assigned_seat in FURNITURE_SET, (
+                f"{s.name} (furniture) got seat {s.assigned_seat}, expected 17 or 18"
+            )
+
+
+def test_low_vision_gets_room_c():
+    rows = "name,start_time,end_time,private_room,low_vision\n"
+    rows += "LowVision,9:00 AM,11:00 AM,Yes,Yes\n"
+    students = _tmp_csv(rows)
+    sched, _ = schedule(students)
+    assert len(sched) == 1
+    assert sched[0].assigned_seat == "c", f"Expected room c, got {sched[0].assigned_seat}"
+
+
+def test_service_animal_gets_room_e():
+    rows = "name,start_time,end_time,private_room,service_animal\n"
+    rows += "ServiceAnimal,9:00 AM,11:00 AM,Yes,Yes\n"
+    students = _tmp_csv(rows)
+    sched, _ = schedule(students)
+    assert len(sched) == 1
+    assert sched[0].assigned_seat == "e", f"Expected room e, got {sched[0].assigned_seat}"
+
+
+def test_feature_fallback():
+    # Seats 17 and 18 fully occupied; third furniture student falls back to any available seat
+    rows = "name,start_time,end_time,private_room,furniture\n"
+    rows += "FurnA,9:00 AM,12:00 PM,No,Yes\n"
+    rows += "FurnB,9:00 AM,12:00 PM,No,Yes\n"
+    rows += "FurnC,9:00 AM,11:00 AM,No,Yes\n"
+    students = _tmp_csv(rows)
+    sched, unsched = schedule(students)
+    assert len(unsched) == 0, f"Expected all scheduled; unscheduled: {[s.name for s in unsched]}"
+    assert len(sched) == 3
+    assigned = [s.assigned_seat for s in sched]
+    assert len(set(assigned)) == 3, "Each student must have a distinct seat"
+
+
 if __name__ == "__main__":
     tests = [
         test_no_laptop_column_defaults_false,
@@ -114,6 +163,10 @@ if __name__ == "__main__":
         test_no_double_bookings_stress,
         test_non_laptop_falls_back_to_non_outlet_when_outlets_full,
         test_laptop_overflows_to_non_outlet_when_outlets_full,
+        test_furniture_students_get_seats_17_18,
+        test_low_vision_gets_room_c,
+        test_service_animal_gets_room_e,
+        test_feature_fallback,
     ]
     for t in tests:
         t()

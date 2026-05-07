@@ -56,6 +56,8 @@ except FileNotFoundError:
         "This file is required to define the seat layout."
     )
 _ALL_SHARED_IDS: list[int] = sorted(OUTLET_IDS + NO_OUTLET_IDS)
+FURNITURE_IDS: list[int] = [17, 18]  # adjustable-height desks within no-outlet pool
+_FURNITURE_SET = set(FURNITURE_IDS)
 
 
 def _build_seats() -> dict[SeatID, Seat]:
@@ -69,36 +71,40 @@ def _build_seats() -> dict[SeatID, Seat]:
     return seats
 
 
-def _greedy_pass(
+
+def _private_greedy_with_preferences(
     students: list[Student],
-    pool_ids: list,
     seats: dict[SeatID, Seat],
 ) -> tuple[list[Student], list[Student]]:
     """
-    Greedy interval scheduling sorted by start time, ties broken by end time
-    (shortest exam first). Uses a min-heap to reclaim seats as they free up.
+    Greedy pass for private students using is_available() directly (only 4 rooms).
+    Service-animal students prefer room e; low-vision students prefer room c;
+    regular students avoid special rooms. Falls back to any available room.
     """
-    free_heap: list = list(pool_ids)
-    heapq.heapify(free_heap)
-    busy_heap: list = []  # (last_booking_end, seat_id)
+    def _sort_key(s: Student):
+        prio = 0 if s.needs_service_animal else (1 if s.needs_low_vision else 2)
+        return (s.start, prio, s.end)
+
+    def _room_order(s: Student) -> list[str]:
+        if s.needs_service_animal:
+            return ["e", "b", "c", "d"]
+        if s.needs_low_vision:
+            return ["c", "b", "d", "e"]
+        return ["b", "d", "c", "e"]
 
     scheduled: list[Student] = []
     unscheduled: list[Student] = []
-
-    for student in sorted(students, key=lambda s: (s.start, s.end)):
-        while busy_heap and busy_heap[0][0] <= student.start:
-            _, seat_id = heapq.heappop(busy_heap)
-            heapq.heappush(free_heap, seat_id)
-
-        if free_heap:
-            seat_id = heapq.heappop(free_heap)
-            seats[seat_id].book(student.start, student.end)
-            student.assigned_seat = seat_id
-            heapq.heappush(busy_heap, (student.end, seat_id))
-            scheduled.append(student)
-        else:
+    for student in sorted(students, key=_sort_key):
+        placed = False
+        for room in _room_order(student):
+            if room in seats and seats[room].is_available(student.start, student.end):
+                seats[room].book(student.start, student.end)
+                student.assigned_seat = room
+                scheduled.append(student)
+                placed = True
+                break
+        if not placed:
             unscheduled.append(student)
-
     return scheduled, unscheduled
 
 
@@ -109,54 +115,55 @@ def _shared_greedy_pass(
     seats: dict[SeatID, Seat],
 ) -> tuple[list[Student], list[Student]]:
     """
-    Greedy pass for shared students, sorted by start time, with laptop-outlet preference.
+    Greedy pass for shared students, sorted by start time, with seat-feature preference.
 
-    Maintains two free heaps — outlet and non-outlet — plus one unified busy heap.
-    Laptop students prefer outlet seats; non-laptop students prefer non-outlet seats
-    (falling back to outlet only when non-outlet is full). Single pass, no conflicts.
+    Three free heaps: outlet ('o'), furniture/adjustable ('f'), plain no-outlet ('n').
+    Furniture students prefer adjustable seats 17/18; laptop students prefer outlet seats.
     """
+    furniture_ids = [x for x in no_outlet_ids if x in _FURNITURE_SET]
+    plain_no_outlet_ids = [x for x in no_outlet_ids if x not in _FURNITURE_SET]
+
     outlet_heap: list[int] = list(outlet_ids)
     heapq.heapify(outlet_heap)
-    no_outlet_heap: list[int] = list(no_outlet_ids)
+    furniture_heap: list[int] = list(furniture_ids)
+    heapq.heapify(furniture_heap)
+    no_outlet_heap: list[int] = list(plain_no_outlet_ids)
     heapq.heapify(no_outlet_heap)
-    busy_heap: list = []  # (last_booking_end, seat_id, is_outlet: bool)
+    busy_heap: list = []  # (end, seat_id, category: 'o'/'f'/'n')
 
     scheduled: list[Student] = []
     unscheduled: list[Student] = []
 
+    def _pop(heaps_and_cats: list) -> tuple:
+        for cat, heap in heaps_and_cats:
+            if heap:
+                return heapq.heappop(heap), cat
+        return None, None
+
     for student in sorted(students, key=lambda s: (s.start, s.end)):
         # Release seats whose last booking ended at or before student's start
         while busy_heap and busy_heap[0][0] <= student.start:
-            _, seat_id, is_outlet = heapq.heappop(busy_heap)
-            if is_outlet:
+            _, seat_id, cat = heapq.heappop(busy_heap)
+            if cat == "o":
                 heapq.heappush(outlet_heap, seat_id)
+            elif cat == "f":
+                heapq.heappush(furniture_heap, seat_id)
             else:
                 heapq.heappush(no_outlet_heap, seat_id)
 
-        seat_id = None
-        is_outlet = False
-
-        if student.uses_laptop:
-            # Prefer outlet seats; fall back to non-outlet only if none free
-            if outlet_heap:
-                seat_id = heapq.heappop(outlet_heap)
-                is_outlet = True
-            elif no_outlet_heap:
-                seat_id = heapq.heappop(no_outlet_heap)
-                is_outlet = False
+        if student.needs_furniture and student.uses_laptop:
+            seat_id, cat = _pop([("f", furniture_heap), ("o", outlet_heap), ("n", no_outlet_heap)])
+        elif student.needs_furniture:
+            seat_id, cat = _pop([("f", furniture_heap), ("n", no_outlet_heap), ("o", outlet_heap)])
+        elif student.uses_laptop:
+            seat_id, cat = _pop([("o", outlet_heap), ("n", no_outlet_heap), ("f", furniture_heap)])
         else:
-            # Prefer non-outlet seats to leave outlets free for laptop students
-            if no_outlet_heap:
-                seat_id = heapq.heappop(no_outlet_heap)
-                is_outlet = False
-            elif outlet_heap:
-                seat_id = heapq.heappop(outlet_heap)
-                is_outlet = True
+            seat_id, cat = _pop([("n", no_outlet_heap), ("o", outlet_heap), ("f", furniture_heap)])
 
         if seat_id is not None:
             seats[seat_id].book(student.start, student.end)
             student.assigned_seat = seat_id
-            heapq.heappush(busy_heap, (student.end, seat_id, is_outlet))
+            heapq.heappush(busy_heap, (student.end, seat_id, cat))
             scheduled.append(student)
         else:
             unscheduled.append(student)
@@ -236,7 +243,7 @@ def schedule(students: list[Student]) -> tuple[list[Student], list[Student]]:
     private_students = [s for s in students if s.needs_private]
     shared_students = [s for s in students if not s.needs_private]
 
-    priv_sched, priv_unsched = _greedy_pass(private_students, PRIVATE_IDS, seats)
+    priv_sched, priv_unsched = _private_greedy_with_preferences(private_students, seats)
     priv_sched, priv_unsched = _swap_pass(priv_unsched, priv_sched, seats, PRIVATE_IDS)
 
     shared_sched, shared_unsched = _shared_greedy_pass(

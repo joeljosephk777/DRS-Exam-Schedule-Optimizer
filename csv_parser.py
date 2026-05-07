@@ -3,7 +3,10 @@ from datetime import datetime
 from models import Student
 
 # Columns we consume; everything else is passed through in Student.extra
-KNOWN_COLUMNS = {"name", "start_time", "end_time", "private_room", "laptop"}
+KNOWN_COLUMNS = {
+    "name", "start_time", "end_time", "private_room", "laptop",
+    "furniture", "low_vision", "service_animal",
+}
 
 # Flexible aliases for boolean columns
 _PRIVATE_TRUE = {"yes", "true", "1", "x", "private", "private room"}
@@ -13,8 +16,11 @@ _REF_DATE = "2000-01-01"
 _TIME_FORMATS = ["%I:%M %p", "%I:%M%p", "%H:%M", "%I %p", "%I%p"]
 
 # DRS export format: normalized keys for derived fields
-_DRS_PRIVATE_COL = "svc_-_*_private_room_for_assessments"
-_DRS_TYPE_RESPONSE_COL = "svc_-_*_type_responses_to_short_answer_and_essay_questions"
+_DRS_PRIVATE_COL        = "svc_-_*_private_room_for_assessments"
+_DRS_TYPE_RESPONSE_COL  = "svc_-_*_type_responses_to_short_answer_and_essay_questions"
+_DRS_FURNITURE_COL      = "svc_-_*_furniture_request_during_assessments"
+_DRS_LOW_VISION_COL     = "svc_-_r1_-_cctv_for_exams"
+_DRS_SERVICE_ANIMAL_COL = "svc_-_*_service_animal_in_assessment_environment_-__notification"
 
 # Extra columns to carry through from the DRS export (everything else is dropped)
 _DRS_EXTRA_COLS = {
@@ -73,11 +79,15 @@ def _parse_drs_rows(reader: csv.DictReader, norm: dict[str, str]) -> list[Studen
         if end <= start:
             raise ValueError(f"Row {i}: end_time must be after start_time for '{name}'.")
 
-        needs_private = get(row, _DRS_PRIVATE_COL).lower() in _PRIVATE_TRUE
+        needs_private        = get(row, _DRS_PRIVATE_COL).lower() in _PRIVATE_TRUE
 
-        exam_type = get(row, "exam_type")
+        exam_type     = get(row, "exam_type")
         type_response = get(row, _DRS_TYPE_RESPONSE_COL).lower()
-        uses_laptop = "canvas/online" in exam_type.lower() or type_response in _LAPTOP_TRUE
+        uses_laptop   = "canvas/online" in exam_type.lower() or type_response in _LAPTOP_TRUE
+
+        needs_furniture      = get(row, _DRS_FURNITURE_COL).lower()      in _LAPTOP_TRUE
+        needs_low_vision     = get(row, _DRS_LOW_VISION_COL).lower()     in _LAPTOP_TRUE
+        needs_service_animal = get(row, _DRS_SERVICE_ANIMAL_COL).lower() in _LAPTOP_TRUE
 
         extra = {
             norm[k]: row[norm[k]]
@@ -88,6 +98,9 @@ def _parse_drs_rows(reader: csv.DictReader, norm: dict[str, str]) -> list[Studen
         students.append(Student(
             name=name, start=start, end=end,
             needs_private=needs_private, uses_laptop=uses_laptop,
+            needs_furniture=needs_furniture,
+            needs_low_vision=needs_low_vision,
+            needs_service_animal=needs_service_animal,
             extra=extra,
         ))
 
@@ -137,6 +150,14 @@ def _parse_csv_with_encoding(path: str, encoding: str) -> list[Student]:
             laptop_orig = norm.get("laptop")
             uses_laptop = (row[laptop_orig].strip().lower() in _LAPTOP_TRUE) if laptop_orig else False
 
+            def _flag(key: str) -> bool:
+                orig = norm.get(key)
+                return (row[orig] or "").strip().lower() in _LAPTOP_TRUE if orig else False
+
+            needs_furniture      = _flag("furniture")
+            needs_low_vision     = _flag("low_vision")
+            needs_service_animal = _flag("service_animal")
+
             extra = {
                 orig: row[orig]
                 for norm_key, orig in norm.items()
@@ -146,6 +167,9 @@ def _parse_csv_with_encoding(path: str, encoding: str) -> list[Student]:
             students.append(Student(
                 name=name, start=start, end=end,
                 needs_private=needs_private, uses_laptop=uses_laptop,
+                needs_furniture=needs_furniture,
+                needs_low_vision=needs_low_vision,
+                needs_service_animal=needs_service_animal,
                 extra=extra,
             ))
 
