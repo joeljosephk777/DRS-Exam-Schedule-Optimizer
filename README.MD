@@ -11,9 +11,9 @@ During finals and midterms, the DRS testing center handles 60+ students per day 
 - **Private room** — require an isolated seat (rooms b, c, d, e — all have wall outlets)
 - **Shared room** — use the open testing area (seats 5–34)
 
-Within the shared room, seats are further split by wall outlet availability. Laptop students (Canvas/Online exams or type-response accommodation) are assigned to outlet seats first.
+Within the shared room, seats differ by outlet availability and physical features. Laptop students are assigned to outlet seats first. Students with specific accommodations (adjustable-height desks, CCTV/low-vision equipment, service animals) are routed to the matching seat or room.
 
-Each student has a fixed exam window somewhere between 8:45 AM and 5:15 PM. No two students can share a seat at the same time. The goal is to fit as many students as possible.
+Each student has a fixed exam window somewhere between 8:00 AM and 5:15 PM. No two students can share a seat at the same time. The goal is to fit as many students as possible.
 
 ---
 
@@ -36,7 +36,7 @@ start schedule.html       # Windows
 xdg-open schedule.html    # Linux
 ```
 
-The chart shows all seats as rows with colored bars for each booking. Hover a bar for student name, times, and type. Empty seats appear as faded rows so available capacity is visible at a glance.
+The chart shows all seats as rows with colored bars for each booking. Each exam (CRN) gets a distinct color so same-exam students are immediately visible across rows. Hover a bar for the student's name, times, laptop status, and class. Empty seats appear as faded rows so available capacity is visible at a glance.
 
 ---
 
@@ -52,10 +52,14 @@ The export CSV from the DRS exam management system. Required columns are read di
 |---|---|
 | Name | `Preferred Name` + `Last Name` |
 | Start / End | `Start Time` / `End Time` |
+| CRN | `CRN` |
 | Private room | `SVC - * Private Room for Assessments` = Yes |
 | Laptop | `Exam Type` contains "Canvas/Online" **or** `SVC - * Type responses to short answer and essay questions` = Yes |
+| Adjustable desk | `SVC - * Furniture Request During Assessments` = Yes |
+| Low vision (CCTV) | `SVC - R1 - CCTV for Exams` = Yes |
+| Service animal | `SVC - * Service Animal in Assessment Environment - Notification` = Yes |
 
-Extra columns passed through to output: Subject, Course, Section, Title, Instructor Name, Instructor Email, Exam Date, CRN, Tags, Barcode.
+Extra columns passed through to output: Subject, Course, Section, Title, Instructor Name, Instructor Email, Exam Date, Tags, Barcode.
 
 ### Generic CSV
 
@@ -68,6 +72,10 @@ Hand-crafted or simplified CSV with named columns:
 | `end_time` | Yes | Exam end (same formats) |
 | `private_room` | Yes | `Yes` / `No` (also accepts `true`, `1`, `x`, `private`) |
 | `laptop` | No | `Yes` / `No` — defaults to No if column absent |
+| `furniture` | No | `Yes` / `No` — adjustable-height desk needed |
+| `low_vision` | No | `Yes` / `No` — CCTV equipment needed |
+| `service_animal` | No | `Yes` / `No` — service animal present |
+| `crn` | No | Course section identifier for anti-cheat separation |
 | any other columns | No | Passed through to output unchanged |
 
 Column names matched case-insensitively. Accepted time formats: `9:00 AM`, `9:00AM`, `13:00`, `9 AM`, `9AM`.
@@ -80,11 +88,12 @@ Column names matched case-insensitively. Accepted time formats: `9:00 AM`, `9:00
 
 ```
 === SCHEDULED STUDENTS ===
-SEAT  NAME                          START       END         LAPTOP  TYPE
-------------------------------------------------------------------------------
-b     Alice Johnson                 8:45 AM     11:45 AM    Yes     Private
-5     Bob Lee                       9:00 AM     12:00 PM    Yes     Shared
-17    David Kim                     9:30 AM     12:30 PM    No      Shared
+SEAT  NAME                          START       END         LAPTOP  CLASS         TYPE
+------------------------------------------------------------------------------------------
+b     Alice Johnson                 8:45 AM     11:45 AM    Yes                   Private
+c     Dana Kim                      9:00 AM     11:00 AM    No                    Private
+5     Bob Lee                       9:00 AM     12:00 PM    Yes                   Shared
+17    David Kim                     9:30 AM     12:30 PM    No     BIOL 202 A     Shared
 ...
 
 === UNSCHEDULED STUDENTS (1) ===
@@ -95,14 +104,19 @@ Irene Thomas                  11:00 AM    3:00 PM     All 4 private seats occupi
 
 Summary: 22/23 students scheduled, 1 could not be placed.
 
-=== SEAT UTILIZATION (window: 8:45 AM–5:15 PM, 510 min) ===
-  Private (4 seats):    1275 /   2040 min booked ( 62.5%)  peak 4/4 concurrent
-  Shared  (30 seats):    2520 /  15300 min booked ( 16.5%)  peak 7/30 concurrent
+=== ADJACENCY WARNINGS (2) ===
+  Same-exam students could not be fully separated (room was too full):
+  ! Sofia Garcia  seat 21  CHEM 151 AA — adjacent to Priya Nguyen (seat 19)
+  ! Priya Nguyen  seat 23  CHEM 151 AA — adjacent to Sofia Garcia (seat 21)
+
+=== SEAT UTILIZATION (window: 8:00 AM–5:00 PM, 540 min) ===
+  Private (4 seats):    1275 /   2160 min booked ( 59.0%)  peak 4/4 concurrent
+  Shared  (30 seats):    2520 /  16200 min booked ( 15.6%)  peak 7/30 concurrent
 ```
 
 ### CSV output columns
 
-`seat`, `name`, `start_time`, `end_time`, `private_room`, `laptop`, `status` (`Scheduled` / `Unscheduled`), `reason` (blank for scheduled; lists conflicting students for unscheduled), plus any extra columns from the input.
+`seat`, `name`, `start_time`, `end_time`, `private_room`, `laptop`, `adj_conflict` (`Yes` if the student could not be separated from a same-exam neighbour), `status` (`Scheduled` / `Unscheduled`), `reason` (blank for scheduled; lists conflicting students for unscheduled), plus any extra columns from the input.
 
 ---
 
@@ -110,12 +124,15 @@ Summary: 22/23 students scheduled, 1 could not be placed.
 
 Defined in `seat_format.txt` (source of truth — edit there to change seat layout).
 
-| Seats | Type | Outlet | Count |
-|---|---|---|---|
-| b, c, d, e | Private rooms | Yes | 4 |
-| 5–8, 9–11, 12–16, 31–34 | Shared | Yes | 16 |
-| 17–30 | Shared | No | 14 |
-| **Total** | | | **34** |
+| Seats | Type | Outlet | Count | Notes |
+|---|---|---|---|---|
+| b, c, d, e | Private rooms | Yes | 4 | c = CCTV/low-vision; e = service-animal/accessible |
+| 5–8, 9–11, 12–16, 31–34 | Shared | Yes | 16 | |
+| 17–18 | Shared | No | 2 | Adjustable-height desks |
+| 19–30 | Shared | No | 12 | |
+| **Total** | | | **34** | |
+
+The shared room is L-shaped. Adjacency is same-side only — no cross-aisle (top section) and no cross-wall (center divider between seats 17–29 and 18–30). The bottom cluster (5–8) is not adjacent to the center section.
 
 ---
 
@@ -123,15 +140,19 @@ Defined in `seat_format.txt` (source of truth — edit there to change seat layo
 
 The scheduler runs independently for each pool (private and shared), then combines results.
 
-**Step 1 — Greedy pass with outlet-aware seat selection**
+**Step 1 — Greedy pass with seat-feature preferences**
 
-Students are sorted by start time, ties broken by end time (shortest exam first). Within the shared pool, two heaps track outlet and non-outlet seats separately. Laptop students pop from the outlet heap first; non-laptop students prefer non-outlet seats and fall back to outlet only when non-outlet is full. All done in a single pass to avoid cross-pass booking conflicts.
+Students are sorted by start time, ties broken by end time. The private pool uses direct availability checks across 4 rooms, routing service-animal students to room e, low-vision students to room c, and regular students to b/d. The shared pool uses three free-heaps — outlet (`o`), furniture/adjustable (`f`), and plain no-outlet (`n`) — with a four-case routing table (furniture × laptop) to direct each student to their preferred heap first and fall back gracefully. All done in a single pass to avoid cross-pass booking conflicts.
 
-Start-time ordering (not EDF) is used because EDF is correct for single-machine interval scheduling but causes double-bookings in the k-machine case: a later-processed student with an earlier actual start can grab a seat that was released for another student, creating an overlap. Start-time ordering guarantees that when a seat is released, all future students start at or after that point.
+Start-time ordering (not EDF) is used because EDF causes double-bookings in the k-machine case: a later-processed student with an earlier actual start can grab a seat released for another student. Start-time ordering guarantees that when a seat is released, all future students start at or after that point.
 
 **Step 2 — Single-swap rescue pass**
 
 After the greedy run, each unscheduled student gets one more attempt: if exactly one scheduled student is blocking a seat, the scheduler tries to move the blocker elsewhere. If a move is found, the unscheduled student takes the vacated slot.
+
+**Step 3 — Anti-cheat adjacency pass**
+
+After all scheduling is complete, students sharing the same CRN (same exam section) with overlapping time windows are checked for physical adjacency. If two same-exam students are placed in neighbouring seats, the scheduler tries to relocate one to a non-adjacent seat. Students who cannot be moved are flagged with an adjacency warning in the output — scheduling is never undone.
 
 ---
 
@@ -142,8 +163,8 @@ scheduler.py      — CLI entry point (argparse)
 algorithm.py      — scheduling logic; parses seat_format.txt at import
 csv_parser.py     — auto-detecting CSV parser (DRS export + generic)
 models.py         — Student and Seat dataclasses
-output.py         — terminal printing and CSV writing
-seat_format.txt        — source of truth for seat numbers and outlet status
-sample_import.csv      — anonymized example of the DRS input format
+output.py         — terminal printing, CSV writing, and HTML chart generation
+seat_format.txt   — source of truth for seat numbers and outlet status
+sample_import.csv — anonymized example of the DRS input format
 test_scheduler.py — lightweight functional tests; runnable as a script
 ```
