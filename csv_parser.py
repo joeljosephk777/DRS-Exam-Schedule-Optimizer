@@ -5,7 +5,7 @@ from models import Student
 # Columns we consume; everything else is passed through in Student.extra
 KNOWN_COLUMNS = {
     "name", "start_time", "end_time", "private_room", "laptop",
-    "furniture", "low_vision", "service_animal",
+    "furniture", "low_vision", "service_animal", "crn",
 }
 
 # Flexible aliases for boolean columns
@@ -88,6 +88,7 @@ def _parse_drs_rows(reader: csv.DictReader, norm: dict[str, str]) -> list[Studen
         needs_furniture      = get(row, _DRS_FURNITURE_COL).lower()      in _LAPTOP_TRUE
         needs_low_vision     = get(row, _DRS_LOW_VISION_COL).lower()     in _LAPTOP_TRUE
         needs_service_animal = get(row, _DRS_SERVICE_ANIMAL_COL).lower() in _LAPTOP_TRUE
+        crn                  = get(row, "crn") or None
 
         extra = {
             norm[k]: row[norm[k]]
@@ -101,6 +102,7 @@ def _parse_drs_rows(reader: csv.DictReader, norm: dict[str, str]) -> list[Studen
             needs_furniture=needs_furniture,
             needs_low_vision=needs_low_vision,
             needs_service_animal=needs_service_animal,
+            crn=crn,
             extra=extra,
         ))
 
@@ -158,6 +160,9 @@ def _parse_csv_with_encoding(path: str, encoding: str) -> list[Student]:
             needs_low_vision     = _flag("low_vision")
             needs_service_animal = _flag("service_animal")
 
+            crn_orig = norm.get("crn")
+            crn = (row[crn_orig] or "").strip() or None if crn_orig else None
+
             extra = {
                 orig: row[orig]
                 for norm_key, orig in norm.items()
@@ -170,6 +175,7 @@ def _parse_csv_with_encoding(path: str, encoding: str) -> list[Student]:
                 needs_furniture=needs_furniture,
                 needs_low_vision=needs_low_vision,
                 needs_service_animal=needs_service_animal,
+                crn=crn,
                 extra=extra,
             ))
 

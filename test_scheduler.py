@@ -2,7 +2,11 @@ import os
 import tempfile
 
 from csv_parser import parse_csv
-from algorithm import schedule, OUTLET_IDS, NO_OUTLET_IDS, PRIVATE_IDS, FURNITURE_IDS
+from algorithm import (
+    schedule, OUTLET_IDS, NO_OUTLET_IDS, PRIVATE_IDS, FURNITURE_IDS, ADJACENCY,
+    _anti_cheat_pass, _build_seats,
+)
+from models import Student as _Student
 
 OUTLET_SET = set(OUTLET_IDS)
 PRIVATE_SET = set(PRIVATE_IDS)
@@ -154,6 +158,53 @@ def test_feature_fallback():
     assert len(set(assigned)) == 3, "Each student must have a distinct seat"
 
 
+def _drs_csv(rows: list[tuple]) -> list:
+    """Build a minimal DRS-format CSV (Last Name, Preferred Name, CRN, Start Time, End Time)."""
+    header = "Last Name,Preferred Name,CRN,Start Time,End Time,Exam Type,SVC - * Private Room for Assessments\n"
+    body = "".join(
+        f"{last},{first},{crn},{start},{end},Written,No\n"
+        for last, first, crn, start, end in rows
+    )
+    return _tmp_csv(header + body)
+
+
+def test_same_crn_not_adjacent():
+    # 2 students with the same CRN and overlapping times must not end up in adjacent seats
+    students = _drs_csv([
+        ("Smith", "Alice", "99999", "9:00 AM", "11:00 AM"),
+        ("Jones", "Bob",   "99999", "9:00 AM", "11:00 AM"),
+    ])
+    sched, _ = schedule(students)
+    assert len(sched) == 2
+    a, b = sched[0].assigned_seat, sched[1].assigned_seat
+    assert b not in ADJACENCY.get(a, []), (
+        f"Same-CRN students placed in adjacent seats {a} and {b}"
+    )
+
+
+def test_same_crn_conflict_flagged():
+    # Directly place two same-CRN students in adjacent seats 5 & 8, fill every
+    # other shared seat so relocation is impossible, then verify the flag is set.
+    seats = _build_seats()
+    S, E = 540, 660  # 9:00–11:00 AM
+
+    a = _Student(name="CrnA", start=S, end=E, needs_private=False, uses_laptop=False, crn="TEST")
+    b = _Student(name="CrnB", start=S, end=E, needs_private=False, uses_laptop=False, crn="TEST")
+    seats[5].book(S, E); a.assigned_seat = 5
+    seats[8].book(S, E); b.assigned_seat = 8
+
+    fillers = []
+    for sid in OUTLET_IDS + NO_OUTLET_IDS:
+        if sid not in (5, 8):
+            f = _Student(name=f"F{sid}", start=S, end=E, needs_private=False, uses_laptop=False)
+            seats[sid].book(S, E); f.assigned_seat = sid
+            fillers.append(f)
+
+    _anti_cheat_pass(fillers + [a, b], seats)
+    assert b.adjacency_conflict, "CrnB should be flagged — no free non-adjacent seat"
+    assert not a.adjacency_conflict, "CrnA (the anchor) should not be flagged"
+
+
 if __name__ == "__main__":
     tests = [
         test_no_laptop_column_defaults_false,
@@ -167,6 +218,8 @@ if __name__ == "__main__":
         test_low_vision_gets_room_c,
         test_service_animal_gets_room_e,
         test_feature_fallback,
+        test_same_crn_not_adjacent,
+        test_same_crn_conflict_flagged,
     ]
     for t in tests:
         t()

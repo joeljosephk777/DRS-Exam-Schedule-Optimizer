@@ -68,6 +68,13 @@ def print_schedule(scheduled: list[Student], unscheduled: list[Student]) -> None
     total = len(scheduled) + len(unscheduled)
     print(f"\nSummary: {len(scheduled)}/{total} students scheduled, {len(unscheduled)} could not be placed.")
 
+    flagged = [s for s in scheduled if s.adjacency_conflict]
+    if flagged:
+        print(f"\n=== ADJACENCY WARNINGS ({len(flagged)}) ===")
+        print("  Same-exam students could not be fully separated (room was too full):")
+        for s in flagged:
+            print(f"  ! {s.name}  seat {s.assigned_seat}  CRN {s.crn}")
+
     _print_utilization(scheduled, unscheduled)
 
 
@@ -136,7 +143,7 @@ def write_csv(
             if k not in extra_keys:
                 extra_keys.append(k)
 
-    base_fields = ["seat", "name", "start_time", "end_time", "private_room", "laptop", "status", "reason"]
+    base_fields = ["seat", "name", "start_time", "end_time", "private_room", "laptop", "adj_conflict", "status", "reason"]
     fieldnames = base_fields + extra_keys
 
     with open(path, "w", newline="", encoding="utf-8") as f:
@@ -151,6 +158,7 @@ def write_csv(
                 "end_time": _fmt(s.end),
                 "private_room": "Yes" if s.needs_private else "No",
                 "laptop": "Yes" if s.uses_laptop else "No",
+                "adj_conflict": "Yes" if s.adjacency_conflict else "",
                 "status": "Scheduled",
                 "reason": "",
             }
@@ -170,6 +178,7 @@ def write_csv(
                 "end_time": _fmt(s.end),
                 "private_room": "Yes" if s.needs_private else "No",
                 "laptop": "Yes" if s.uses_laptop else "No",
+                "adj_conflict": "",
                 "status": "Unscheduled",
                 "reason": base_reason + conflict_str,
             }

@@ -14,6 +14,8 @@ class Student:
     needs_furniture: bool = False
     needs_low_vision: bool = False
     needs_service_animal: bool = False
+    crn: Optional[str] = None
+    adjacency_conflict: bool = False
     extra: dict = field(default_factory=dict)
     assigned_seat: Optional[SeatID] = None
 

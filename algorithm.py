@@ -59,6 +59,25 @@ _ALL_SHARED_IDS: list[int] = sorted(OUTLET_IDS + NO_OUTLET_IDS)
 FURNITURE_IDS: list[int] = [17, 18]  # adjustable-height desks within no-outlet pool
 _FURNITURE_SET = set(FURNITURE_IDS)
 
+# Physical seat adjacency — same-side neighbours only (no cross-aisle, no cross-wall)
+ADJACENCY: dict[SeatID, list[SeatID]] = {
+    # Top — Side A: 31, 16, 15, 14, 13, 12
+    31: [16],       16: [31, 15],   15: [16, 14],
+    14: [15, 13],   13: [14, 12],   12: [13],
+    # Top — Side B: 11, 32, 10, 33, 9, 34
+    11: [32],       32: [11, 10],   10: [32, 33],
+    33: [10, 9],    9:  [33, 34],   34: [9],
+    # Center — Odd side: 17, 19, 21, 23, 25, 27, 29
+    17: [19],       19: [17, 21],   21: [19, 23],
+    23: [21, 25],   25: [23, 27],   27: [25, 29],   29: [27],
+    # Center — Even side: 18, 20, 22, 24, 26, 28, 30
+    18: [20],       20: [18, 22],   22: [20, 24],
+    24: [22, 26],   26: [24, 28],   28: [26, 30],   30: [28],
+    # Bottom: 5, 8, 6, 7
+    5: [8],         8: [5, 6],      6: [8, 7],      7: [6],
+    # Private rooms are fully enclosed — no adjacency entries
+}
+
 
 def _build_seats() -> dict[SeatID, Seat]:
     seats: dict[SeatID, Seat] = {}
@@ -231,6 +250,64 @@ def _swap_pass(
     return scheduled + newly_scheduled, still_unscheduled
 
 
+def _try_relocate(
+    student: Student,
+    crn_group: list[Student],
+    seats: dict[SeatID, Seat],
+) -> bool:
+    """
+    Try to move student to a non-adjacent, available seat within their pool.
+    Returns True and updates student.assigned_seat on success; False otherwise.
+    """
+    pool = list(PRIVATE_IDS) if student.needs_private else list(_ALL_SHARED_IDS)
+
+    banned: set = set()
+    for peer in crn_group:
+        if peer is student:
+            continue
+        if student.end <= peer.start or student.start >= peer.end:
+            continue  # no time overlap — not a cheating risk
+        banned.add(peer.assigned_seat)
+        banned.update(ADJACENCY.get(peer.assigned_seat, []))
+
+    for alt_id in pool:
+        if alt_id == student.assigned_seat or alt_id in banned:
+            continue
+        if not seats[alt_id].is_available(student.start, student.end):
+            continue
+        seats[student.assigned_seat].bookings.remove((student.start, student.end))
+        seats[alt_id].book(student.start, student.end)
+        student.assigned_seat = alt_id
+        return True
+    return False
+
+
+def _anti_cheat_pass(
+    scheduled: list[Student],
+    seats: dict[SeatID, Seat],
+) -> None:
+    """
+    Post-process to separate same-CRN students from adjacent seats.
+    Sets adjacency_conflict=True on any student that could not be moved.
+    """
+    by_crn: dict[str, list[Student]] = {}
+    for s in scheduled:
+        if s.crn:
+            by_crn.setdefault(s.crn, []).append(s)
+
+    for group in by_crn.values():
+        if len(group) < 2:
+            continue
+        for i, a in enumerate(group):
+            for b in group[i + 1:]:
+                if a.end <= b.start or b.end <= a.start:
+                    continue  # no time overlap
+                if b.assigned_seat not in ADJACENCY.get(a.assigned_seat, []):
+                    continue  # not adjacent
+                if not _try_relocate(b, group, seats):
+                    b.adjacency_conflict = True
+
+
 def schedule(students: list[Student]) -> tuple[list[Student], list[Student]]:
     """
     Greedy interval scheduling (start-time order) with a post-greedy single-swap
@@ -253,4 +330,6 @@ def schedule(students: list[Student]) -> tuple[list[Student], list[Student]]:
         shared_unsched, shared_sched, seats, _ALL_SHARED_IDS
     )
 
-    return priv_sched + shared_sched, priv_unsched + shared_unsched
+    all_scheduled = priv_sched + shared_sched
+    _anti_cheat_pass(all_scheduled, seats)
+    return all_scheduled, priv_unsched + shared_unsched
