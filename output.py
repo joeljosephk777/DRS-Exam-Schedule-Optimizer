@@ -1,3 +1,4 @@
+import colorsys
 import csv
 import html as _html
 import math
@@ -221,9 +222,6 @@ table.chart-table { border-collapse: collapse; }
 }
 .bar:hover { filter: brightness(1.15); z-index: 10; }
 .bar-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
-.bar-private   { background: #7c4dbd; }
-.bar-outlet    { background: #2a7ae2; }
-.bar-no-outlet { background: #2a9e6a; }
 .tooltip {
   display: none; position: absolute; bottom: calc(100% + 8px); left: 50%;
   transform: translateX(-50%); background: #1a1a1a; color: #fff;
@@ -240,17 +238,58 @@ h2 { font-size: 15px; font-weight: 600; margin: 24px 0 10px; }
 """
 
 
-def _render_bars(students: list, seat_type: str, t_start: int, duration: int) -> str:
+_NO_CRN_COLOR = "#888888"
+
+
+def _build_crn_colors(scheduled: list[Student]) -> dict[str, str]:
+    """Assign a distinct color to each unique CRN using evenly-spaced HSL hues."""
+    crns = list(dict.fromkeys(s.crn for s in scheduled if s.crn))
+    colors: dict[str, str] = {}
+    n = max(len(crns), 1)
+    for i, crn in enumerate(crns):
+        r, g, b = colorsys.hls_to_rgb(i / n, 0.42, 0.62)
+        colors[crn] = f"#{int(r * 255):02x}{int(g * 255):02x}{int(b * 255):02x}"
+    return colors
+
+
+def _extra(student: Student, *keys: str) -> str:
+    """Pull the first non-empty value from student.extra matching any of the given keys."""
+    for k in keys:
+        v = (student.extra.get(k) or "").strip()
+        if v:
+            return v
+    return ""
+
+
+def _render_bars(students: list, crn_colors: dict, t_start: int, duration: int) -> str:
     bars = []
     for s in students:
         left_pct = (s.start - t_start) / duration * 100
         width_pct = (s.end - s.start) / duration * 100
-        tooltip = _html.escape(
-            f"{s.name}\n{_fmt(s.start)} – {_fmt(s.end)}\n"
-            f"{'Private room' if s.needs_private else 'Shared'} | Laptop: {'Yes' if s.uses_laptop else 'No'}"
-        )
+        color = crn_colors.get(s.crn, _NO_CRN_COLOR) if s.crn else _NO_CRN_COLOR
+
+        subject  = _extra(s, "Subject",         "subject")
+        course   = _extra(s, "Course",           "course")
+        section  = _extra(s, "Section",          "section")
+        title    = _extra(s, "Title",            "title")
+        prof     = _extra(s, "Instructor Name",  "instructor_name")
+
+        class_str = " ".join(filter(None, [subject, course, section]))
+        lines = [
+            s.name,
+            f"{_fmt(s.start)} – {_fmt(s.end)}",
+            f"Laptop: {'Yes' if s.uses_laptop else 'No'}",
+        ]
+        if class_str:
+            lines.append(f"Class: {class_str}")
+        if title:
+            lines.append(title)
+        if prof:
+            lines.append(f"Prof: {prof}")
+
+        tooltip = _html.escape("\n".join(lines))
         bars.append(
-            f'<div class="bar bar-{seat_type}" style="left:{left_pct:.2f}%;width:{width_pct:.2f}%">'
+            f'<div class="bar" style="left:{left_pct:.2f}%;width:{width_pct:.2f}%;background:{color}">'
             f'<span class="bar-label">{_html.escape(s.name)}</span>'
             f'<span class="tooltip">{tooltip}</span>'
             f'</div>'
@@ -275,6 +314,8 @@ def write_chart(
     duration = t_end - t_start
     chart_width = max(800, duration * 2)
 
+    crn_colors = _build_crn_colors(scheduled)
+
     bookings_by_seat: dict = {}
     for s in sorted(scheduled, key=lambda x: x.start):
         bookings_by_seat.setdefault(s.assigned_seat, []).append(s)
@@ -292,9 +333,20 @@ def write_chart(
     )
 
     p.append('<div class="legend">')
-    p.append('<div class="legend-item"><div class="legend-swatch" style="background:#7c4dbd"></div><span>Private room</span></div>')
-    p.append('<div class="legend-item"><div class="legend-swatch" style="background:#2a7ae2"></div><span>Shared — outlet</span></div>')
-    p.append('<div class="legend-item"><div class="legend-swatch" style="background:#2a9e6a"></div><span>Shared — no outlet</span></div>')
+    for crn, color in crn_colors.items():
+        ref = next((s for s in scheduled if s.crn == crn), None)
+        subj   = _extra(ref, "Subject",  "subject")  if ref else ""
+        course = _extra(ref, "Course",   "course")   if ref else ""
+        sect   = _extra(ref, "Section",  "section")  if ref else ""
+        label  = " ".join(filter(None, [subj, course, sect])) or crn
+        p.append(
+            f'<div class="legend-item">'
+            f'<div class="legend-swatch" style="background:{color}"></div>'
+            f'<span>{_html.escape(label)}</span>'
+            f'</div>'
+        )
+    if not crn_colors:
+        p.append('<div class="legend-item"><div class="legend-swatch" style="background:#888"></div><span>Exam</span></div>')
     p.append('</div>')
 
     p.append('<div class="chart-outer"><table class="chart-table" cellspacing="0">')
@@ -310,19 +362,19 @@ def write_chart(
     p.append('</div></td></tr>')
 
     groups = [
-        ("Private Rooms", [(sid, "private") for sid in PRIVATE_IDS]),
-        ("Shared — Outlet", [(sid, "outlet") for sid in OUTLET_IDS]),
-        ("Shared — No Outlet", [(sid, "no-outlet") for sid in NO_OUTLET_IDS]),
+        ("Private Rooms", PRIVATE_IDS),
+        ("Shared — Outlet", OUTLET_IDS),
+        ("Shared — No Outlet", NO_OUTLET_IDS),
     ]
 
-    for group_name, seats_in_group in groups:
+    for group_name, seat_ids in groups:
         p.append(f'<tr class="group-row"><td class="label-cell">{_html.escape(group_name)}</td>'
                  f'<td class="lane-cell" style="width:{chart_width}px"></td></tr>')
-        for sid, seat_type in seats_in_group:
+        for sid in seat_ids:
             students_here = bookings_by_seat.get(sid, [])
             row_cls = "seat-row" + ("" if students_here else " empty")
             label = f"Room {sid}" if isinstance(sid, str) else f"Seat {sid}"
-            bars = _render_bars(students_here, seat_type, t_start, duration)
+            bars = _render_bars(students_here, crn_colors, t_start, duration)
             p.append(
                 f'<tr class="{row_cls}"><td class="label-cell">{label}</td>'
                 f'<td class="lane-cell"><div class="lane" style="width:{chart_width}px">{bars}</div></td></tr>'
