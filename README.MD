@@ -28,7 +28,15 @@ python3 scheduler.py <input.csv> --output results.csv --chart schedule.html
 
 `--output` / `-o` writes the full schedule to a CSV file in addition to printing to the terminal.
 
-`--chart` / `-c` generates a self-contained HTML Gantt chart — open it in any browser to see all seats as rows with colored bars showing when each seat is occupied. Hover a bar for student details. Empty seats are shown as faded rows so available capacity is visible at a glance.
+`--chart` / `-c` generates a self-contained HTML Gantt chart. To open it:
+
+```bash
+open schedule.html        # macOS
+start schedule.html       # Windows
+xdg-open schedule.html    # Linux
+```
+
+The chart shows all seats as rows with colored bars for each booking. Hover a bar for student name, times, and type. Empty seats appear as faded rows so available capacity is visible at a glance.
 
 ---
 
