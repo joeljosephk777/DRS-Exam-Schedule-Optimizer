@@ -3,7 +3,7 @@ import csv
 import html as _html
 import math
 from models import Student
-from algorithm import PRIVATE_IDS, OUTLET_IDS, NO_OUTLET_IDS
+from algorithm import PRIVATE_IDS, OUTLET_IDS, NO_OUTLET_IDS, ADJACENCY
 
 _PRIVATE_SEAT_COUNT = len(PRIVATE_IDS)
 _SHARED_SEAT_COUNT = len(OUTLET_IDS) + len(NO_OUTLET_IDS)
@@ -79,7 +79,21 @@ def print_schedule(scheduled: list[Student], unscheduled: list[Student]) -> None
         print(f"\n=== ADJACENCY WARNINGS ({len(flagged)}) ===")
         print("  Same-exam students could not be fully separated (room was too full):")
         for s in flagged:
-            print(f"  ! {s.name}  seat {s.assigned_seat}  CRN {s.crn}")
+            neighbours = [
+                o for o in scheduled
+                if o is not s
+                and o.crn == s.crn
+                and not (s.end <= o.start or s.start >= o.end)
+                and o.assigned_seat in ADJACENCY.get(s.assigned_seat, [])
+            ]
+            adj_str = ", ".join(f"{o.name} (seat {o.assigned_seat})" for o in neighbours)
+            class_str = " ".join(filter(None, [
+                _extra(s, "Subject", "subject"),
+                _extra(s, "Course",  "course"),
+                _extra(s, "Section", "section"),
+            ]))
+            label = f"{class_str} — " if class_str else ""
+            print(f"  ! {s.name}  seat {s.assigned_seat}  {label}adjacent to {adj_str or '?'}")
 
     _print_utilization(scheduled, unscheduled)
 
