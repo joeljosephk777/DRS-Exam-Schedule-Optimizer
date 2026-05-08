@@ -15,6 +15,8 @@ Within the shared room, seats differ by outlet availability and physical feature
 
 Each student has a fixed exam window somewhere between 8:00 AM and 5:15 PM. No two students can share a seat at the same time. The goal is to fit as many students as possible.
 
+The tool also flags **adjacency conflicts** — students taking the same exam (same CRN) who end up seated next to each other, which is a potential academic integrity concern.
+
 ---
 
 ## Usage
