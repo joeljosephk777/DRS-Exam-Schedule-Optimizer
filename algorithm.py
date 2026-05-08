@@ -1,5 +1,6 @@
 import heapq
 import os
+import random
 from models import Student, Seat, SeatID
 
 
@@ -136,27 +137,28 @@ def _shared_greedy_pass(
     """
     Greedy pass for shared students, sorted by start time, with seat-feature preference.
 
-    Three free heaps: outlet ('o'), furniture/adjustable ('f'), plain no-outlet ('n').
-    Furniture students prefer adjustable seats 17/18; laptop students prefer outlet seats.
+    Three free sets: outlet ('o'), furniture/adjustable ('f'), plain no-outlet ('n').
+    Selection within each set is random so same-CRN students scatter across the room
+    rather than clustering into consecutive seats (which the anti-cheat pass then
+    struggles to fix). busy_heap remains a min-heap ordered by end time.
     """
     furniture_ids = [x for x in no_outlet_ids if x in _FURNITURE_SET]
     plain_no_outlet_ids = [x for x in no_outlet_ids if x not in _FURNITURE_SET]
 
-    outlet_heap: list[int] = list(outlet_ids)
-    heapq.heapify(outlet_heap)
-    furniture_heap: list[int] = list(furniture_ids)
-    heapq.heapify(furniture_heap)
-    no_outlet_heap: list[int] = list(plain_no_outlet_ids)
-    heapq.heapify(no_outlet_heap)
+    outlet_free: set  = set(outlet_ids)
+    furniture_free: set = set(furniture_ids)
+    no_outlet_free: set = set(plain_no_outlet_ids)
     busy_heap: list = []  # (end, seat_id, category: 'o'/'f'/'n')
 
     scheduled: list[Student] = []
     unscheduled: list[Student] = []
 
-    def _pop(heaps_and_cats: list) -> tuple:
-        for cat, heap in heaps_and_cats:
-            if heap:
-                return heapq.heappop(heap), cat
+    def _pop(sets_and_cats: list) -> tuple:
+        for cat, free in sets_and_cats:
+            if free:
+                seat_id = random.choice(list(free))
+                free.discard(seat_id)
+                return seat_id, cat
         return None, None
 
     for student in sorted(students, key=lambda s: (s.start, s.end)):
@@ -164,20 +166,20 @@ def _shared_greedy_pass(
         while busy_heap and busy_heap[0][0] <= student.start:
             _, seat_id, cat = heapq.heappop(busy_heap)
             if cat == "o":
-                heapq.heappush(outlet_heap, seat_id)
+                outlet_free.add(seat_id)
             elif cat == "f":
-                heapq.heappush(furniture_heap, seat_id)
+                furniture_free.add(seat_id)
             else:
-                heapq.heappush(no_outlet_heap, seat_id)
+                no_outlet_free.add(seat_id)
 
         if student.needs_furniture and student.uses_laptop:
-            seat_id, cat = _pop([("f", furniture_heap), ("o", outlet_heap), ("n", no_outlet_heap)])
+            seat_id, cat = _pop([("f", furniture_free), ("o", outlet_free), ("n", no_outlet_free)])
         elif student.needs_furniture:
-            seat_id, cat = _pop([("f", furniture_heap), ("n", no_outlet_heap), ("o", outlet_heap)])
+            seat_id, cat = _pop([("f", furniture_free), ("n", no_outlet_free), ("o", outlet_free)])
         elif student.uses_laptop:
-            seat_id, cat = _pop([("o", outlet_heap), ("n", no_outlet_heap), ("f", furniture_heap)])
+            seat_id, cat = _pop([("o", outlet_free), ("n", no_outlet_free), ("f", furniture_free)])
         else:
-            seat_id, cat = _pop([("n", no_outlet_heap), ("o", outlet_heap), ("f", furniture_heap)])
+            seat_id, cat = _pop([("n", no_outlet_free), ("o", outlet_free), ("f", furniture_free)])
 
         if seat_id is not None:
             seats[seat_id].book(student.start, student.end)
@@ -315,6 +317,10 @@ def schedule(students: list[Student]) -> tuple[list[Student], list[Student]]:
     pool. Private and shared pools are scheduled independently.
     Returns (scheduled, unscheduled).
     """
+    for s in students:
+        s.assigned_seat = None
+        s.adjacency_conflict = False
+
     seats = _build_seats()
 
     private_students = [s for s in students if s.needs_private]

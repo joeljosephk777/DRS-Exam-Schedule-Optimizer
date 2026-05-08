@@ -22,6 +22,13 @@ def main():
         metavar="FILE",
         help="Write a self-contained HTML Gantt chart to FILE (open in any browser)",
     )
+    parser.add_argument(
+        "--tries", "-t",
+        metavar="N",
+        type=int,
+        default=1000,
+        help="Number of random attempts to run; keeps the best result (default: 1000)",
+    )
     args = parser.parse_args()
 
     try:
@@ -37,7 +44,25 @@ def main():
         print("No students found in CSV.")
         sys.exit(0)
 
-    scheduled, unscheduled = schedule(students)
+    best_score = (float('inf'), float('inf'))
+    best_snapshot = None
+    best_scheduled, best_unscheduled = None, None
+
+    for _ in range(max(1, args.tries)):
+        sched, unsched = schedule(students)
+        # Score must be captured NOW — next schedule() call resets all student objects
+        score = (len(unsched), sum(s.adjacency_conflict for s in sched))
+        if score < best_score:
+            best_score = score
+            best_snapshot = [(s.assigned_seat, s.adjacency_conflict) for s in students]
+            best_scheduled, best_unscheduled = list(sched), list(unsched)
+
+    # Restore best run's assignments onto the student objects
+    for s, (seat, conflict) in zip(students, best_snapshot):
+        s.assigned_seat = seat
+        s.adjacency_conflict = conflict
+
+    scheduled, unscheduled = best_scheduled, best_unscheduled
     print_schedule(scheduled, unscheduled)
 
     if args.output:

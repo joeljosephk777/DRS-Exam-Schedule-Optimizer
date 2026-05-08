@@ -24,11 +24,12 @@ python3 scheduler.py <input.csv>
 python3 scheduler.py <input.csv> --output results.csv
 python3 scheduler.py <input.csv> --chart schedule.html
 python3 scheduler.py <input.csv> --output results.csv --chart schedule.html
+python3 scheduler.py <input.csv> --tries 500   # override attempt count
 ```
 
 `--output` / `-o` writes the full schedule to a CSV file in addition to printing to the terminal.
 
-`--chart` / `-c` generates a self-contained HTML Gantt chart. To open it:
+`--chart` / `-c` generates a self-contained HTML file with two tabs: a **Timeline** (Gantt chart, one row per seat) and a **Seat Map** (interactive floor plan). The seat map has a time slider and a **Now** button that jumps to the current wall-clock time. To open it:
 
 ```bash
 open schedule.html        # macOS
@@ -140,9 +141,9 @@ The shared room is L-shaped. Adjacency is same-side only — no cross-aisle (top
 
 The scheduler runs independently for each pool (private and shared), then combines results.
 
-**Step 1 — Greedy pass with seat-feature preferences**
+**Step 1 — Randomised greedy pass with seat-feature preferences**
 
-Students are sorted by start time, ties broken by end time. The private pool uses direct availability checks across 4 rooms, routing service-animal students to room e, low-vision students to room c, and regular students to b/d. The shared pool uses three free-heaps — outlet (`o`), furniture/adjustable (`f`), and plain no-outlet (`n`) — with a four-case routing table (furniture × laptop) to direct each student to their preferred heap first and fall back gracefully. All done in a single pass to avoid cross-pass booking conflicts.
+Students are sorted by start time, ties broken by end time. The private pool uses direct availability checks across 4 rooms, routing service-animal students to room e, low-vision students to room c, and regular students to b/d. The shared pool maintains three free-sets — outlet (`o`), furniture/adjustable (`f`), and plain no-outlet (`n`) — with a four-case routing table (furniture × laptop) to direct each student to their preferred category first and fall back gracefully. Within each category, a seat is chosen at **random** (rather than by seat ID order) so same-exam students scatter across the room instead of clustering into consecutive seats. All done in a single pass to avoid cross-pass booking conflicts.
 
 Start-time ordering (not EDF) is used because EDF causes double-bookings in the k-machine case: a later-processed student with an earlier actual start can grab a seat released for another student. Start-time ordering guarantees that when a seat is released, all future students start at or after that point.
 
@@ -153,6 +154,10 @@ After the greedy run, each unscheduled student gets one more attempt: if exactly
 **Step 3 — Anti-cheat adjacency pass**
 
 After all scheduling is complete, students sharing the same CRN (same exam section) with overlapping time windows are checked for physical adjacency. If two same-exam students are placed in neighbouring seats, the scheduler tries to relocate one to a non-adjacent seat. Students who cannot be moved are flagged with an adjacency warning in the output — scheduling is never undone.
+
+**Step 4 — Multi-start (1000 tries by default)**
+
+Because Step 1 is randomised, the entire pipeline runs 1000 times. The result with the fewest unscheduled students is kept; adjacency warnings break ties. Override with `--tries N`. Each run completes in under 1 ms, so 1000 tries adds less than a second of wall time.
 
 ---
 
