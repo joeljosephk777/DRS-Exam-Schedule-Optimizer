@@ -26,7 +26,7 @@ def main():
         "--tries", "-t",
         metavar="N",
         type=int,
-        default=1000,
+        default=10000,
         help="Number of random attempts to run; keeps the best result (default: 1000)",
     )
     args = parser.parse_args()
