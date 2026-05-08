@@ -37,6 +37,12 @@ start schedule.html       # Windows
 xdg-open schedule.html    # Linux
 ```
 
+**In GitHub Codespaces:** run a local server in the terminal, then open the forwarded port in your browser:
+```bash
+python3 -m http.server 8080
+```
+Codespaces will detect port 8080 and show an **Open in Browser** prompt (or find it under the **Ports** tab). Press `Ctrl+C` in the terminal when done to stop the server.
+
 The chart shows all seats as rows with colored bars for each booking. Each exam (CRN) gets a distinct color so same-exam students are immediately visible across rows. Hover a bar for the student's name, times, laptop status, and class. Empty seats appear as faded rows so available capacity is visible at a glance.
 
 ---
