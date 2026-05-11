@@ -26,10 +26,13 @@ python3 scheduler.py <input.csv>
 python3 scheduler.py <input.csv> --output results.csv
 python3 scheduler.py <input.csv> --chart schedule.html
 python3 scheduler.py <input.csv> --output results.csv --chart schedule.html
-python3 scheduler.py <input.csv> --tries 500   # override attempt count
+python3 scheduler.py <input.csv> --tries 500      # override attempt count
+python3 scheduler.py <input.csv> --buffer 15      # add 15-min buffer after each exam
 ```
 
 `--output` / `-o` writes the full schedule to a CSV file in addition to printing to the terminal.
+
+`--buffer MINS` adds the given number of minutes to every student's end time before scheduling, so seats stay reserved for a cleanup/transition window between bookings. Not shown in `--help`; omit it for back-to-back scheduling (the default).
 
 `--chart` / `-c` generates a self-contained HTML file with two tabs: a **Timeline** (Gantt chart, one row per seat) and a **Seat Map** (interactive floor plan). The seat map has a time slider and a **Now** button that jumps to the current wall-clock time. To open it:
 

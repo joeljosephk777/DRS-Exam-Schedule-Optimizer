@@ -27,7 +27,14 @@ def main():
         metavar="N",
         type=int,
         default=10000,
-        help="Number of random attempts to run; keeps the best result (default: 1000)",
+        help="Number of random attempts to run; keeps the best result (default: 10000)",
+    )
+    parser.add_argument(
+        "--buffer",
+        metavar="MINS",
+        type=int,
+        default=0,
+        help=argparse.SUPPRESS,
     )
     args = parser.parse_args()
 
@@ -43,6 +50,10 @@ def main():
     if not students:
         print("No students found in CSV.")
         sys.exit(0)
+
+    if args.buffer:
+        for s in students:
+            s.end += args.buffer
 
     best_score = (float('inf'), float('inf'))
     best_snapshot = None
